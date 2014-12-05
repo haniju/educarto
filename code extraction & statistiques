@@ -1,0 +1,161 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Nov 30 20:19:02 2014
+
+@author: nono
+"""
+import csv
+from collections import defaultdict
+"""
+import xml.etree.ElementTree as ET
+tree = ET.parse('testMOOC.xml')
+root = tree.getroot()
+
+
+def infoInt(t):
+    if (t == "{http://purl.org/dc/elements/1.1/}title") or (t == "{http://purl.org/dc/elements/1.1/}creator") or (t == "{http://purl.org/dc/elements/1.1/}date") or (t == "{http://purl.org/dc/elements/1.1/}description") or (t == "{http://purl.org/dc/elements/1.1/}language"):
+        return(1)
+    else:
+        return(0)
+
+listR = root[2]  # correspond au tag "ListRecords"
+listG = []
+
+for child in listR:
+    if (child.tag == '{http://www.openarchives.org/OAI/2.0/}record'):
+        article = child[1][0]  # correspond au tag "oai_dc:dc"
+        # print ("Nv article: ", article.tag)
+        listC = []
+        for item in article:
+            # print (item.tag)
+            # print(item.text)
+            if infoInt(item.tag) == 1:
+                listC.append([item.tag, item.text])
+        listG.append(listC)
+
+# print("\n", "Liste générale:", listG)
+
+
+file = open("myfileXML.csv", "w")
+fileW = csv.writer(file)
+fileW.writerow(["Index","Titre","Auteur","Description","Année de publication","Langue"])
+
+n = 1
+for l in listG:
+    title = ""
+    author = ""
+    des = ""
+    year = ""
+    lg = ""
+    for tup in l:
+        if tup[0] == '{http://purl.org/dc/elements/1.1/}title':
+            title = tup[1]
+            # print("titre: ", title)
+        elif tup[0] == '{http://purl.org/dc/elements/1.1/}creator':
+            author += tup[1]
+            author += " "
+            # print("author: ", author)
+        elif tup[0] == '{http://purl.org/dc/elements/1.1/}description':
+            des = tup[1]
+            # print("Description: ", des)
+        elif tup[0] == '{http://purl.org/dc/elements/1.1/}date':
+            year = tup[1]
+            # print("Année: ", year)
+        elif tup[0] == '{http://purl.org/dc/elements/1.1/}language':
+            lg = tup[1]
+            # print("Langue: ", lg)
+    print([n,title,author,des,year,lg])
+    if (lg == 'eng') or (lg == 'en'):
+        fileW.writerow([n,title,author,des,year,lg])
+        n += 1
+
+file.close()
+"""
+
+#  création d'1 liste de listes des mots des descriptions inscrites ds le fichier csv
+fileR = csv.reader(open("myfileXML.csv", "r"))
+i = 0
+desL = []
+for row in fileR:
+    if (len(row) > 0) and i != 0:
+        if (row[3] != ''):
+            desL.append([row[3]])
+    i += 1
+# print("Final string: ", desL)
+
+#  #enlever ponctuation
+import string
+punct = set(string.punctuation)
+punct.add('"')
+# print(punct)
+
+wordsLL = []
+for des in desL:
+    for i in punct:
+        des[0] = des[0].replace(i, '')
+    wordsLL.append(des[0].split())
+# print("Liste de liste des mots des différentes descriptions : ", wordsLL)
+
+#  # Att : enlever research, result, also, overall
+import nltk
+from nltk.corpus import stopwords
+
+stopW = set(stopwords.words('english'))
+wordsLLF = []
+finalWordList = []
+for liste in wordsLL:
+    newliste = []
+    for w in liste:
+        if w.lower() not in stopW:  # on supprime les mots ordinaires
+            newliste.append(w.lower())  # on met tt en minuscule
+    wordsLLF.append(newliste)
+    finalWordList = finalWordList + newliste
+# print("Liste finale : ", finalWordList)
+# print("Liste de liste finale: ", wordsLLF)
+
+#  #création dico ac nb occurences, co-ocr, indice J.
+ocL = {}.fromkeys(set(finalWordList), 0)
+for valeur in finalWordList:
+    ocL[valeur] += 1
+# print(ocL)
+
+
+def cooccurence_matrix_corpus(corpus):
+    # corpus = liste de liste de mots contenu ds 1 description --> faire cette liste!
+    matrix = defaultdict(lambda: defaultdict(int))
+    for description in corpus:
+        for i in range(len(description)-1):
+            for j in range(i+1, len(description)):
+                word1 = description[i]
+                word2 = description[j]
+                matrix[word1][word2] += 1
+                matrix[word1][word1] += 1
+    return matrix
+
+co_ocM = cooccurence_matrix_corpus(wordsLLF)
+# print(co_ocM)
+
+co_ocL = {}.fromkeys(set(finalWordList), 0)
+for valeur in set(finalWordList):
+    nb_w_co = len(co_ocM[valeur])
+    somme = 0
+    for key, value in co_ocM[valeur].items():
+        somme += value
+    if nb_w_co != 0:
+        co_ocL[valeur] = somme/nb_w_co
+# print(co_ocL)
+
+"""
+iJL = {}.fromkeys(set(finalWordList), 0)
+for valeur in finalWordList:
+    iJL[valeur] = ocL[valeur]
+"""
+
+
+#  #création du fichier de stat.
+fileS = open("wordStat.csv", "w")
+fileSW = csv.writer(fileS)
+fileSW.writerow(["Mot", "Nb occurences", "Nb Co-occurences"])
+for word in set(finalWordList):
+    fileSW.writerow([word, ocL[word], co_ocL[word]])
+fileS.close()
