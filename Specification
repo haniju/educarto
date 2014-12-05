@@ -1,0 +1,15 @@
+Technique:
+Hebergement sur une machine debian avec un serveur web.
+
+données sources en format CSV
+Données importés dans la BD
+Graphes SVG
+
+Use case:
+Utilisateur lamba qui fait la recherche et voit les données les données correspondante.
+
+
+Besoin:
+Site web
+Page de FAQ
+Graphes de données
