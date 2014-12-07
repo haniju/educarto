@@ -2,7 +2,8 @@
 """
 Created on Sun Nov 30 20:19:02 2014
 
-@author: nono
+@author: Noëline LEVI ALVARES
+@licence: 
 """
 import csv
 from collections import defaultdict
@@ -37,7 +38,7 @@ for child in listR:
 
 
 file = open("myfileXML.csv", "w")
-fileW = csv.writer(file)
+fileW = csv.writer(file, lineterminator='\n')
 fileW.writerow(["Index","Titre","Auteur","Description","Année de publication","Langue"])
 
 n = 1
@@ -79,7 +80,7 @@ desL = []
 for row in fileR:
     if (len(row) > 0) and i != 0:
         if (row[3] != ''):
-            desL.append([row[3]])
+            desL.append([row[3], i])
     i += 1
 # print("Final string: ", desL)
 
@@ -90,10 +91,10 @@ punct.add('"')
 # print(punct)
 
 wordsLL = []
-for des in desL:
+for tup in desL:
     for i in punct:
-        des[0] = des[0].replace(i, '')
-    wordsLL.append(des[0].split())
+        tup[0] = tup[0].replace(i, '')
+    wordsLL.append([tup[0].split(), tup[1]])
 # print("Liste de liste des mots des différentes descriptions : ", wordsLL)
 
 #  # Att : enlever research, result, also, overall
@@ -101,18 +102,22 @@ import nltk
 from nltk.corpus import stopwords
 
 stopW = set(stopwords.words('english'))
+index = 0
 wordsLLF = []
 finalWordList = []
-for liste in wordsLL:
+table_MotIndex = []  # table comportant cq mot (même doublons) ac l'index du document duquel il provient
+for tup in wordsLL:
     newliste = []
-    for w in liste:
-        if w.lower() not in stopW:  # on supprime les mots ordinaires
+    for w in tup[0]:
+        if (w.lower() not in stopW) and (w.lower not in newliste):  # on supprime les mots ordinaires
             newliste.append(w.lower())  # on met tt en minuscule
-    wordsLLF.append(newliste)
+            table_MotIndex.append([w.lower(), tup[1]])
+    wordsLLF.append(newliste)  # on supprime les doublons ds cq liste
     finalWordList = finalWordList + newliste
 # print("Liste finale : ", finalWordList)
 # print("Liste de liste finale: ", wordsLLF)
-
+# print("Liste index: ", table_MotIndex)
+"""
 #  #création dico ac nb occurences, co-ocr, indice J.
 ocL = {}.fromkeys(set(finalWordList), 0)
 for valeur in finalWordList:
@@ -137,25 +142,33 @@ co_ocM = cooccurence_matrix_corpus(wordsLLF)
 
 co_ocL = {}.fromkeys(set(finalWordList), 0)
 for valeur in set(finalWordList):
-    nb_w_co = len(co_ocM[valeur])
+    nb_w = len(set(finalWordList))
     somme = 0
     for key, value in co_ocM[valeur].items():
         somme += value
-    if nb_w_co != 0:
-        co_ocL[valeur] = somme/nb_w_co
-# print(co_ocL)
+    if nb_w != 0:
+        co_ocL[valeur] = somme/nb_w
+print(co_ocL)
 
-"""
+
 iJL = {}.fromkeys(set(finalWordList), 0)
 for valeur in finalWordList:
     iJL[valeur] = ocL[valeur]
-"""
+
 
 
 #  #création du fichier de stat.
 fileS = open("wordStat.csv", "w")
-fileSW = csv.writer(fileS)
+fileSW = csv.writer(fileS, lineterminator='\n')  # ne pas oublier lineterminator, sans quoi on a des lignes vides
 fileSW.writerow(["Mot", "Nb occurences", "Nb Co-occurences"])
 for word in set(finalWordList):
     fileSW.writerow([word, ocL[word], co_ocL[word]])
 fileS.close()
+"""
+#  #création du fichier de stat.
+fileIndex = open("wordsIndex.csv", "w")
+fileIndexW = csv.writer(fileIndex, lineterminator='\n')  # ne pas oublier lineterminator, sans quoi on a des lignes vides
+fileIndexW.writerow(["Mot", "Index"])
+for tup in table_MotIndex:
+    fileIndexW.writerow([tup[0], tup[1]])
+fileIndex.close()
