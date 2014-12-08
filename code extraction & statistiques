@@ -7,6 +7,7 @@ Created on Sun Nov 30 20:19:02 2014
 """
 import csv
 from collections import defaultdict
+from math import log
 """
 import xml.etree.ElementTree as ET
 tree = ET.parse('testMOOC.xml')
@@ -73,16 +74,16 @@ for l in listG:
 file.close()
 """
 
-#  création d'1 liste de listes des mots des descriptions inscrites ds le fichier csv
+#  création d'1 liste de listes des descriptions et leur index inscrites ds le fichier csv
 fileR = csv.reader(open("myfileXML.csv", "r"))
-i = 0
-desL = []
+nb_doc = 0
+description_IndexList = []
 for row in fileR:
-    if (len(row) > 0) and i != 0:
+    if (len(row) > 0) and nb_doc != 0:
         if (row[3] != ''):
-            desL.append([row[3], i])
-    i += 1
-# print("Final string: ", desL)
+            description_IndexList.append([row[3], nb_doc])
+    nb_doc += 1
+# print("Final string: ", description_IndexList)
 
 #  #enlever ponctuation
 import string
@@ -90,12 +91,13 @@ punct = set(string.punctuation)
 punct.add('"')
 # print(punct)
 
-wordsLL = []
-for tup in desL:
+#  création d'1 liste de listes des descriptions sans ponctuation et leur index
+desInd_sansPunct = []
+for tup in description_IndexList:
     for i in punct:
         tup[0] = tup[0].replace(i, '')
-    wordsLL.append([tup[0].split(), tup[1]])
-# print("Liste de liste des mots des différentes descriptions : ", wordsLL)
+    desInd_sansPunct.append([tup[0].split(), tup[1]])
+# print("Liste de liste des mots des différentes descriptions : ", desInd_sansPunct)
 
 #  # Att : enlever research, result, also, overall
 import nltk
@@ -103,28 +105,30 @@ from nltk.corpus import stopwords
 
 stopW = set(stopwords.words('english'))
 index = 0
-wordsLLF = []
-finalWordList = []
+wordsLLF = []  # liste de listes des mots de chaque descriptions
+finalWordList = []  # liste  globale des mots ac doublons de toutes les descriptions
 table_MotIndex = []  # table comportant cq mot (même doublons) ac l'index du document duquel il provient
-for tup in wordsLL:
+for tup in desInd_sansPunct:
     newliste = []
-    for w in tup[0]:
-        if (w.lower() not in stopW) and (w.lower not in newliste):  # on supprime les mots ordinaires
-            newliste.append(w.lower())  # on met tt en minuscule
-            table_MotIndex.append([w.lower(), tup[1]])
-    wordsLLF.append(newliste)  # on supprime les doublons ds cq liste
-    finalWordList = finalWordList + newliste
+    for word in tup[0]:
+        if (word.lower() not in stopW):   # on supprime les mots ordinaires
+            if(word.lower not in newliste):  #on supprime les doublons ds wordsLLF
+                newliste.append(word.lower())  # on met tt en minuscule
+                table_MotIndex.append([word.lower(), tup[1]])
+            finalWordList = finalWordList + [word.lower()]
+    wordsLLF.append(newliste)
+    # finalWordList = finalWordList + newliste
 # print("Liste finale : ", finalWordList)
 # print("Liste de liste finale: ", wordsLLF)
 # print("Liste index: ", table_MotIndex)
-"""
-#  #création dico ac nb occurences, co-ocr, indice J.
+
+#  #création dico ac nb occurences de cq mot
 ocL = {}.fromkeys(set(finalWordList), 0)
 for valeur in finalWordList:
     ocL[valeur] += 1
 # print(ocL)
 
-
+# création matrix de coocurences de chaque paires de mots
 def cooccurence_matrix_corpus(corpus):
     # corpus = liste de liste de mots contenu ds 1 description --> faire cette liste!
     matrix = defaultdict(lambda: defaultdict(int))
@@ -134,12 +138,13 @@ def cooccurence_matrix_corpus(corpus):
                 word1 = description[i]
                 word2 = description[j]
                 matrix[word1][word2] += 1
-                matrix[word1][word1] += 1
+                matrix[word2][word1] += 1
     return matrix
 
 co_ocM = cooccurence_matrix_corpus(wordsLLF)
 # print(co_ocM)
 
+# création du dico de coocurence de chaque mot (moyenne des coocurences d'avec les autres mots)
 co_ocL = {}.fromkeys(set(finalWordList), 0)
 for valeur in set(finalWordList):
     nb_w = len(set(finalWordList))
@@ -148,27 +153,81 @@ for valeur in set(finalWordList):
         somme += value
     if nb_w != 0:
         co_ocL[valeur] = somme/nb_w
-print(co_ocL)
+# print(co_ocL)
 
 
+def iJacquart_matrix_corpus(corpus):
+    # corpus = liste globale de tous les mots (sans doublons)
+    matrix = defaultdict(lambda: defaultdict(float))
+    for i in range(len(corpus)-1):
+        for j in range(i+1, len(corpus)):
+            word1 = corpus[i]
+            word2 = corpus[j]
+            co_ocr = co_ocM[word1][word2]
+            sum_ocr = ocL[word1] + ocL[word2]
+            matrix[word1][word2] = co_ocr/sum_ocr
+            matrix[word2][word1] = co_ocr/sum_ocr
+    return matrix
+
+iJM = iJacquart_matrix_corpus(list(set(finalWordList)))
+
+# création du dico de l'indice de Jacquart de chaque mot
 iJL = {}.fromkeys(set(finalWordList), 0)
-for valeur in finalWordList:
-    iJL[valeur] = ocL[valeur]
+for valeur in set(finalWordList):
+    nb_w = len(set(finalWordList))
+    somme = 0
+    for key, value in iJM[valeur].items():
+        somme += value
+    if nb_w != 0:
+        iJL[valeur] = somme/nb_w
+# print(iJL)
 
 
+# renvoie un dico contenant le nb de doc contenant le mot word
+def nombre_doc_contenant(word, corpus):
+    n = 0
+    for liste in corpus:
+        if (word in liste):
+            n += 1
+    return n
 
-#  #création du fichier de stat.
+# dico contenant chaque mot avec le nombre de doc le contenant
+nb_doc_mot = {}.fromkeys(set(finalWordList), 0)
+for word in set(finalWordList):
+    nb_doc_mot[word] = nombre_doc_contenant(word, wordsLLF)
+# print("Nombre de doc par mots: ", nb_doc_mot)
+
+# dico contenant Inverse document frequency de chaque mot
+idf = {}.fromkeys(set(finalWordList), 0)
+for word in set(finalWordList):
+    idf[word] = log((nb_doc - 1) / nb_doc_mot[word])
+# print("idf par mots: ", idf)
+
+tf = {}.fromkeys(set(finalWordList), 0)
+for word in set(finalWordList):
+    tf[word] = ocL[word]/len(finalWordList)
+# print("tf par mots: ", tf)
+
+tfidf = {}.fromkeys(set(finalWordList), 0)
+for word in set(finalWordList):
+    tfidf[word] = idf[word]*tf[word]
+print("tfidf par mots: ", tf)
+
+
+#  #création du fichier de statistiques
 fileS = open("wordStat.csv", "w")
 fileSW = csv.writer(fileS, lineterminator='\n')  # ne pas oublier lineterminator, sans quoi on a des lignes vides
-fileSW.writerow(["Mot", "Nb occurences", "Nb Co-occurences"])
+fileSW.writerow(["Mot", "Nb occurences", "Nb Co-occurences", "Indice de Jacquart", "Term frequency", "Inverse doc freq", "TF-IDF"])
 for word in set(finalWordList):
-    fileSW.writerow([word, ocL[word], co_ocL[word]])
+    fileSW.writerow([word, ocL[word], co_ocL[word], iJL[word], tf[word], idf[word], tfidf[word]])
 fileS.close()
+
 """
-#  #création du fichier de stat.
+#  #création du fichier d'index de chaque mot
 fileIndex = open("wordsIndex.csv", "w")
 fileIndexW = csv.writer(fileIndex, lineterminator='\n')  # ne pas oublier lineterminator, sans quoi on a des lignes vides
 fileIndexW.writerow(["Mot", "Index"])
 for tup in table_MotIndex:
     fileIndexW.writerow([tup[0], tup[1]])
 fileIndex.close()
+"""
