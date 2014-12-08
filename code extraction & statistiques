@@ -211,7 +211,7 @@ for word in set(finalWordList):
 tfidf = {}.fromkeys(set(finalWordList), 0)
 for word in set(finalWordList):
     tfidf[word] = idf[word]*tf[word]
-print("tfidf par mots: ", tf)
+# print("tfidf par mots: ", tf)
 
 
 #  #création du fichier de statistiques
@@ -231,3 +231,28 @@ for tup in table_MotIndex:
     fileIndexW.writerow([tup[0], tup[1]])
 fileIndex.close()
 """
+
+# création du fichier ordonné des mots selon le nb d'occurences
+dataF = open('wordStat.csv', "r")
+data = csv.reader(dataF)
+l = 0
+sortedlist = []
+for row in data:
+    if (l == 0):
+        header = row
+    else:
+        line = row
+        line[1] = int(line[1])
+        sortedlist.append(line)
+    l += 1
+import operator
+sortedlist.sort(key=operator.itemgetter(1), reverse=True)
+print(sortedlist)
+dataF.close()
+
+fileOrdered = open("wordsOrd.csv", "w")
+fileOrderedW = csv.writer(fileOrdered, lineterminator='\n')  # ne pas oublier lineterminator, sans quoi on a des lignes vides
+fileOrderedW.writerow(header)
+for row in sortedlist:
+    fileOrderedW.writerow(row)
+fileOrdered.close()
