@@ -1,9 +1,14 @@
-Technique:
-Hebergement sur une machine debian avec un serveur web.
+Techniques:
+Rubedo CMS Open Source : http://www.rubedo-project.org/
+Xampp ou Netbeans
+Xampp open source cross-platform web server solution stack package : https://www.apachefriends.org/index.html
+Netbeans open-source Integrated Development Environment for software developers : https://netbeans.org/ 
+MongoDB Base de donnée NoSql : https://www.mongodb.org/
 
-données sources en format CSV
-Données importés dans la BD
+Fonctionnalités:
+Fichier CSV importé dans la BD
 Graphes SVG
+
 
 Use case:
 Utilisateur lamba qui fait la recherche et voit les données les données correspondante.
