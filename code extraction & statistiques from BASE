@@ -1,16 +1,32 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Nov 30 20:19:02 2014
+Created on Wed Jan 14 12:19:22 2015
 
 @author: Noëline LEVI ALVARES
-@licence: 
+@licence:  
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ 
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Affero General Public License for more details.
+ 
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+
 import csv
 from collections import defaultdict
 from math import log
-"""
+
+nomFichierXML = input('Entrer le nom du fichier XML à parser : ')
+ref = input('Entrer le mot qui référencera vos fichiers : ')
+
 import xml.etree.ElementTree as ET
-tree = ET.parse('testMOOC.xml')
+tree = ET.parse(nomFichierXML)
 root = tree.getroot()
 
 
@@ -37,11 +53,13 @@ for child in listR:
 
 # print("\n", "Liste générale:", listG)
 
+nomFA = "articles_" + ref + ".csv"
 
-file = open("articles.csv", "w")
+file = open(nomFA, "w")
 fileW = csv.writer(file, lineterminator='\n')
 fileW.writerow(["Index","Titre","Auteur","Description","Année de publication","Langue"])
 
+special_char = ['\u0302', '\u0163', '\u25ba', '\u0301', '\u03b5','\u201f']
 n = 1
 for l in listG:
     title = ""
@@ -68,14 +86,15 @@ for l in listG:
             # print("Langue: ", lg)
     if (lg == 'eng') or (lg == 'en'):
         # print([n,title,author,des,year,lg])
-        fileW.writerow([n,title,author,des,year,lg])
+        fileW.writerow([n, title, author, des, year, lg])
         n += 1
 
 file.close()
-"""
+
+
 
 #  création d'1 liste de listes des descriptions et leur index inscrites ds le fichier csv
-fileR = open("articles.csv", "r")
+fileR = open(nomFA, "r")
 fileRR = csv.reader(fileR)
 nb_doc = 0
 description_IndexList = []
@@ -93,7 +112,6 @@ fileR.close()
 import string
 punct = set(string.punctuation)
 punct.add('"')
-# print(punct)
 
 #  création d'1 liste de listes des descriptions sans ponctuation et leur index
 desInd_sansPunct = []
@@ -101,10 +119,9 @@ for tup in description_IndexList:
     for i in punct:
         tup[0] = tup[0].replace(i, '')
     desInd_sansPunct.append([tup[0].split(), tup[1]])
-# print("Liste de liste des mots des différentes descriptions : ", desInd_sansPunct)
+# print("Liste de liste des mots des différentes descriptions et des index : ", desInd_sansPunct)
 
-#  # Att : enlever research, result, also, overall
-import nltk
+# enlever les stopwords
 from nltk.corpus import stopwords
 
 stopW = set(stopwords.words('english'))
@@ -118,13 +135,13 @@ for tup in desInd_sansPunct:
         if (word.lower() not in stopW):   # on supprime les mots ordinaires
             if(word.lower not in newliste):  #on supprime les doublons ds wordsLLF
                 newliste.append(word.lower())  # on met tt en minuscule
-                table_MotIndex.append([word.lower(), tup[1]])
+            table_MotIndex.append([word.lower(), tup[1]])
             finalWordList = finalWordList + [word.lower()]
     wordsLLF.append(newliste)
-    # finalWordList = finalWordList + newliste
 # print("Liste finale : ", finalWordList)
 # print("Liste de liste finale: ", wordsLLF)
 # print("Liste index: ", table_MotIndex)
+
 
 #  #création dico ac nb occurences de cq mot
 ocL = {}.fromkeys(set(finalWordList), 0)
@@ -132,10 +149,11 @@ for valeur in finalWordList:
     ocL[valeur] += 1
 # print(ocL)
 
+
 #link_list = [[mooc,study][mooc,participant]...] => sert à former liens ds Gephi
 link_list = []
 # création matrix de coocurences de chaque paires de mots
-def cooccurence_matrix_corpus(corpus,liste):
+def cooccurence_matrix_corpus(corpus, liste):
     # corpus = liste de liste de mots contenu ds 1 description --> faire cette liste!
     matrix = defaultdict(lambda: defaultdict(int))
     for description in corpus:
@@ -152,7 +170,9 @@ co_ocM = cooccurence_matrix_corpus(wordsLLF, link_list)
 # print(co_ocM)
 
 
-fileL = open("links.csv", "w")
+# créatoin du fichier de liens
+nomFL = "links_" + ref + ".csv"
+fileL = open(nomFL, "w")
 fileLW = csv.writer(fileL, lineterminator='\n')  # ne pas oublier lineterminator, sans quoi on a des lignes vides
 fileLW.writerow(["Source", "Target"])
 for tup in link_list:
@@ -170,6 +190,7 @@ for valeur in set(finalWordList):
     if nb_w != 0:
         co_ocL[valeur] = somme/nb_w
 # print(co_ocL)
+
 
 
 def iJacquart_matrix_corpus(corpus):
@@ -213,6 +234,7 @@ for word in set(finalWordList):
     nb_doc_mot[word] = nombre_doc_contenant(word, wordsLLF)
 # print("Nombre de doc par mots: ", nb_doc_mot)
 
+
 # dico contenant Inverse document frequency de chaque mot
 idf = {}.fromkeys(set(finalWordList), 0)
 for word in set(finalWordList):
@@ -231,7 +253,8 @@ for word in set(finalWordList):
 
 
 #  #création du fichier de statistiques
-fileS = open("wordStat.csv", "w")
+nomFS = "stat_" + ref + ".csv"
+fileS = open(nomFS, "w")
 fileSW = csv.writer(fileS, lineterminator='\n')  # ne pas oublier lineterminator, sans quoi on a des lignes vides
 fileSW.writerow(["Mot", "Nb occurences", "Nb Co-occurences", "Indice de Jacquart", "Term frequency", "Inverse doc freq", "TF-IDF"])
 for word in set(finalWordList):
@@ -240,7 +263,8 @@ fileS.close()
 
 
 #  #création du fichier d'index de chaque mot
-fileIndex = open("wordsIndex.csv", "w")
+nomFI = "wordsIndex_"+ ref + ".csv"
+fileIndex = open(nomFI, "w")
 fileIndexW = csv.writer(fileIndex, lineterminator='\n')  # ne pas oublier lineterminator, sans quoi on a des lignes vides
 fileIndexW.writerow(["Mot", "Index"])
 for tup in table_MotIndex:
@@ -248,8 +272,8 @@ for tup in table_MotIndex:
 fileIndex.close()
 
 
-# création du fichier ordonné des mots selon tfidf
-dataF = open('wordStat.csv', "r")
+#  #création du fichier ordonné des mots selon tfidf
+dataF = open(nomFS, "r")
 data = csv.reader(dataF)
 l = 0
 sortedlist = []
@@ -266,18 +290,21 @@ sortedlist.sort(key=operator.itemgetter(6), reverse=True)
 # print(sortedlist)
 dataF.close()
 
-
-fileOrdered = open("wordsOrd.csv", "w")
+nomFOrd = "wordsOrd_" + ref + ".csv"
+fileOrdered = open(nomFOrd, "w")
 fileOrderedW = csv.writer(fileOrdered, lineterminator='\n')  # ne pas oublier lineterminator, sans quoi on a des lignes vides
 fileOrderedW.writerow(header)
 for row in sortedlist:
     fileOrderedW.writerow(row)
 fileOrdered.close()
 
+
+
 # réduction du fichier ordonné par seulement les 100 mots et l'indice intéressant
 j = 0
 liste100 = []  # liste des 100 mots retenus
-fileOrdered = open("100wordsOrd.csv", "w")
+nomFOrd100 = "100wordsOrd_" + ref + ".csv"
+fileOrdered = open(nomFOrd100, "w")
 fileOrderedW = csv.writer(fileOrdered, lineterminator='\n')  # ne pas oublier lineterminator, sans quoi on a des lignes vides
 fileOrderedW.writerow(["Word", "TF-IDF"])
 for row in sortedlist:  # on ne prend que 100 mots sur la totalité
@@ -289,18 +316,43 @@ for row in sortedlist:  # on ne prend que 100 mots sur la totalité
     j += 1
 fileOrdered.close()
 
-# création du fichier de coocurences des 100 mots
+"""
+## 2ème partie de code à ne lancer qu'après l'avoir lancer une 1ère fois!"
+
+# récupération des id de gephi
+### importer sous Gephi la table "100wordsOrd_..." (... = ref), mettre comme colonne 1 les id et colonne 2 les words, exporter le fichier ds le dossier avec pour nom "IdWordGephi_..."
+
+
+nomFIdGephi = "IdWordGephi_" + ref + ".csv"
+fileR = open(nomFIdGephi, "r")
+file = csv.reader(fileR)
+dicoId = {}.fromkeys(liste100, 0)  # dico contenant les [mot: Id] ac Id donnés par Gephi aux 100 mots
+k = 0
+for row in file:
+    if k != 0:
+        dicoId[row[1]] = row[0]
+    k += 1
+fileR.close()
+
+
+# création du dico de coocurences des 100 mots entre eux
 co_occurenceListe100 = []
 for i in range(len(liste100)-1):
         for j in range(i+1, len(liste100)):
             word1 = liste100[i]
             word2 = liste100[j]
             coo = co_ocM[word1][word2]
-            co_occurenceListe100.append([word1, word2, coo])
+            co_occurenceListe100.append([dicoId[word1], dicoId[word2], coo])
 
-fileLink = open("100links.csv", "w")
+# création du fichier de lien ac les Id et les coocurences pour Gephi (Links)
+nomFLGephi = "gephiLinks_" + ref + ".csv"
+fileLink = open(nomFLGephi, "w")
 fileLinkW = csv.writer(fileLink, lineterminator='\n')  # ne pas oublier lineterminator, sans quoi on a des lignes vides
 fileLinkW.writerow(["Source", "Target", "Co-occurence"])
 for row in co_occurenceListe100:  
     fileLinkW.writerow(row)
 fileLink.close()
+
+### Utilisation de Gephi: importer pour table des noeuds le fichier "100wordsOrd_...", copier words vers label, importer pour table des liens le fichier "gephiLinks_..."
+
+"""
